@@ -34,6 +34,10 @@ const char _version[6] = "v1.20";
 
 #pragma GCC diagnostic ignored "-Wformat-truncation"
 
+#if defined(CONFIG_IDF_TARGET_ESP32) && !defined(LED_BUILTIN)
+# define LED_BUILTIN    2
+#endif
+
 // WiFi parameters
 WiFiClient _wifi;
 
@@ -405,12 +409,18 @@ void setup()
 	// Set up serial for debugging using an appropriate baud rate
 	// This is for communication with the development environment, NOT the Alpha system
 	// See Definitions.h for this.
+#if defined(CONFIG_IDF_TARGET_ESP32)
+	Serial.begin(115200);     // same as ESP32 boot messages
+#else
 	Serial.begin(9600);
-
+#endif
 
 	// Configure LED for output
 	pinMode(LED_BUILTIN, OUTPUT);
 
+#ifdef DEBUG
+  Serial.println("Starting up");
+#endif
 
 	// Set up the software serial for communicating with the MAX
 	_modBus = new RS485Handler;
@@ -570,8 +580,8 @@ void setupWifi()
 
 	// Output some debug information
 #ifdef DEBUG
-	Serial.print("WiFi connected, IP is");
-	Serial.print(WiFi.localIP());
+	Serial.print("WiFi connected, IP is ");
+	Serial.println(WiFi.localIP());
 #endif
 
 	// Connected, so ditch out with blank screen
@@ -787,7 +797,7 @@ modbusRequestAndResponseStatusValues getSerialNumber()
 		oledLine4[5] = 0;
 		updateOLED(false, "Hello", oledLine3, oledLine4);
 #ifdef DEBUG
-		sprintf(_debugOutput, "Alpha Serial Number: %s", response.dataValueFormatted);
+		snprintf(_debugOutput, ARRAY_SIZE(_debugOutput), "Alpha Serial Number: %s", response.dataValueFormatted);
 		Serial.println(_debugOutput);
 #endif
 
@@ -1377,7 +1387,7 @@ void mqttCallback(char* topic, byte* message, unsigned int length)
 
 
 #ifdef DEBUG
-				sprintf(_debugOutput, "Got a cleaned JSON parameter of '%s', value '%s'", pairNameClean, pairValueClean);
+				snprintf(_debugOutput, ARRAY_SIZE(_debugOutput), "Got a cleaned JSON parameter of '%s', value '%s'", pairNameClean, pairValueClean);
 				Serial.println(_debugOutput);
 #endif
 
