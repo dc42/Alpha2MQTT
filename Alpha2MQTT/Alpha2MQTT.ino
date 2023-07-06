@@ -16,7 +16,11 @@ First, go and customise options at the top of Definitions.h!
 #include "RS485Handler.h"
 #include "Definitions.h"
 #include <Arduino.h>
-#include <ESP8266WiFi.h>
+#if defined(CONFIG_IDF_TARGET_ESP32)
+# include <WiFi.h>
+#else
+# include <ESP8266WiFi.h>
+#endif
 #include <PubSubClient.h>
 #include <SPI.h>
 #include <Wire.h>
@@ -24,7 +28,11 @@ First, go and customise options at the top of Definitions.h!
 #include <Adafruit_SSD1306.h>
 
 // Device parameters
-char _version[6] = "v1.20";
+const char _version[6] = "v1.20";
+
+#define ARRAY_SIZE(_x)    (sizeof(_x)/sizeof(_x[0]))
+
+#pragma GCC diagnostic ignored "-Wformat-truncation"
 
 // WiFi parameters
 WiFiClient _wifi;
@@ -43,9 +51,9 @@ char* _mqttPayload;
 
 // OLED variables
 char _oledOperatingIndicator = '*';
-char _oledLine2[OLED_CHARACTER_WIDTH] = "";
-char _oledLine3[OLED_CHARACTER_WIDTH] = "";
-char _oledLine4[OLED_CHARACTER_WIDTH] = "";
+char _oledLine2[OLED_CHARACTER_WIDTH + 1] = "";
+char _oledLine3[OLED_CHARACTER_WIDTH + 1] = "";
+char _oledLine4[OLED_CHARACTER_WIDTH + 1] = "";
 
 
 // RS485 and AlphaESS functionality are packed up into classes
@@ -406,7 +414,7 @@ void setup()
 
 	// Set up the software serial for communicating with the MAX
 	_modBus = new RS485Handler;
-	_modBus->setDebugOutput(_debugOutput);
+	_modBus->setDebugOutput(_debugOutput, ARRAY_SIZE(_debugOutput));
 	
 
 	// Set up the helper class for reading with reading registers
@@ -487,7 +495,9 @@ The loop function runs overand over again until power down or reset
 */
 void loop()
 {
+#ifdef FORCE_RESTART
 	static unsigned long autoReboot = 0;
+#endif
 
 	// Refresh LED Screen, will cause the status asterisk to flicker
 	updateOLED(true, "", "", "");
@@ -758,7 +768,6 @@ some system fault descriptions depend on knowing whether an AL based or AE based
 */
 modbusRequestAndResponseStatusValues getSerialNumber()
 {
-	static unsigned long lastRun = 0;
 	modbusRequestAndResponseStatusValues result = modbusRequestAndResponseStatusValues::preProcessing;
 	modbusRequestAndResponse response;
 
@@ -868,7 +877,7 @@ void updateRunstate()
 			request = _registerHandler->readHandledRegister(REG_BATTERY_HOME_R_BATTERY_POWER, &response);
 			if (request == modbusRequestAndResponseStatusValues::readDataRegisterSuccess)
 			{
-				sprintf(batteryPower, "Bat:%dW", response.signedShortValue);
+				snprintf(batteryPower, ARRAY_SIZE(batteryPower), "Bat:%dW", response.signedShortValue);
 			}
 		}
 
@@ -878,7 +887,7 @@ void updateRunstate()
 			request = _registerHandler->readHandledRegister(REG_BATTERY_HOME_R_SOC, &response);
 			if (request == modbusRequestAndResponseStatusValues::readDataRegisterSuccess)
 			{
-				sprintf(batterySOC, "%0.02f%%", response.unsignedShortValue * 0.1);
+				snprintf(batterySOC, ARRAY_SIZE(batterySOC), "%0.02f%%", response.unsignedShortValue * 0.1);
 			}
 		}
 
@@ -977,7 +986,6 @@ Query the handled register in the usual way, and add the cleansed output to the 
 */
 modbusRequestAndResponseStatusValues addStateInfo(uint16_t registerAddress, char* registerName, bool addComma, modbusRequestAndResponseStatusValues& resultAddedToPayload)
 {
-	unsigned int val;
 	char stateAddition[128] = ""; // 128 should cover individual additions to the payload
 	char addQuote = false;
 	modbusRequestAndResponse response;
@@ -991,7 +999,7 @@ modbusRequestAndResponseStatusValues addStateInfo(uint16_t registerAddress, char
 		// Add a quote if the return data type is character or has been converted from lookup to description.
 		addQuote = (response.returnDataType == modbusReturnDataType::character || response.hasLookup);
 
-		sprintf(stateAddition, "    \"%s\": %s%s%s%s\r\n", registerName, addQuote ? "\"" : "", response.dataValueFormatted, addQuote ? "\"" : "", addComma ? "," : "");
+		snprintf(stateAddition, ARRAY_SIZE(stateAddition), "    \"%s\": %s%s%s%s\r\n", registerName, addQuote ? "\"" : "", response.dataValueFormatted, addQuote ? "\"" : "", addComma ? "," : "");
 
 		/*
 		ABC,
@@ -1015,7 +1023,7 @@ modbusRequestAndResponseStatusValues addStateInfo(uint16_t registerAddress, char
 
 
 
-modbusRequestAndResponseStatusValues addToPayload(char* addition)
+modbusRequestAndResponseStatusValues addToPayload(const char* addition)
 {
 	int targetRequestedSize = strlen(_mqttPayload) + strlen(addition);
 
@@ -1087,7 +1095,7 @@ void sendData()
 	}
 }
 
-void sendDataFromAppropriateArray(mqttState* registerArray, int numberOfRegisters, char* topic)
+void sendDataFromAppropriateArray(mqttState* registerArray, int numberOfRegisters, const char* topic)
 {
 	int	l = 0;
 
@@ -1109,6 +1117,7 @@ void sendDataFromAppropriateArray(mqttState* registerArray, int numberOfRegister
 			strcpy_P(singleRegister.mqttName, registerArray[l].mqttName);
 
 			result = addStateInfo(singleRegister.registerAddress, singleRegister.mqttName, l < (numberOfRegisters - 1), resultAddedToPayload);
+			(void)result;     // suppress compiler warning because result is not currently used
 			
 			if (resultAddedToPayload == modbusRequestAndResponseStatusValues::payloadExceededCapacity)
 			{
@@ -1187,7 +1196,7 @@ void mqttCallback(char* topic, byte* message, unsigned int length)
 	uint8_t registerCount;
 
 	// Bytes are received back as base ten, 0-255, so four chars to account for null terminator
-	char rawByteForPayload[4] = "";
+	char rawByteForPayload[10] = "";
 	char rawDataForPayload[100] = "";
 	char mqttIncomingPayload[128] = ""; // Should be enough to cover request JSON.
 
@@ -1221,7 +1230,7 @@ void mqttCallback(char* topic, byte* message, unsigned int length)
 	if (strcmp(topic, DEVICE_NAME MQTT_SUB_REQUEST_READ_HANDLED_REGISTER) == 0)
 	{
 		subScription = mqttSubscriptions::readHandledRegister;
-		strcpy(topicResponse, DEVICE_NAME MQTT_MES_RESPONSE_READ_HANDLED_REGISTER) == 0;
+		strcpy(topicResponse, DEVICE_NAME MQTT_MES_RESPONSE_READ_HANDLED_REGISTER);
 	}
 	else if (strcmp(topic, DEVICE_NAME MQTT_SUB_REQUEST_READ_RAW_REGISTER) == 0)
 	{
@@ -1260,7 +1269,7 @@ void mqttCallback(char* topic, byte* message, unsigned int length)
 	}
 	else
 	{
-		mqttSubscriptions::unknown;
+		subScription = mqttSubscriptions::unknown;
 		result = modbusRequestAndResponseStatusValues::notValidIncomingTopic;
 	}
 
@@ -1584,7 +1593,12 @@ void mqttCallback(char* topic, byte* message, unsigned int length)
 
 				// Despite a start and end provided, ensure not below zero and not above the array size
 				int numberOfRegisters = sizeof(_mqttAllHandledRegisters) / sizeof(struct mqttState);
+#if 1 // DC
+				// startPosConverted can never be <0 because it has unsigned type
+				uint16_t minPosition = startPosConverted;
+#else
 				uint16_t minPosition = startPosConverted < 0 ? 0 : startPosConverted;
+#endif
 				uint16_t maxPosition = endPosConverted > numberOfRegisters - 1 ? numberOfRegisters - 1 : endPosConverted;
 
 				resultAddToPayload = addToPayload("{\r\n");
@@ -1884,7 +1898,7 @@ sendMqtt
 
 Sends whatever is in the modular level payload to the specified topic.
 */
-void sendMqtt(char *topic)
+void sendMqtt(const char *topic)
 {
 	// Attempt a send
 	if (!_mqtt.publish(topic, _mqttPayload))

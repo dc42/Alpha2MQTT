@@ -20,7 +20,10 @@ Handles Modbus requests and responses in a tidy class separate from main program
 #endif
 
 #include "Definitions.h"
-#include <SoftwareSerial.h>
+
+#if !defined(CONFIG_IDF_TARGET_ESP32)
+# include <SoftwareSerial.h>
+#endif
 
 // SoftwareSerial is used to create a second serial port, which will be deidcated to RS485.
 // The built-in serial port remains available for flashing and debugging.
@@ -29,17 +32,25 @@ Handles Modbus requests and responses in a tidy class separate from main program
 #define RS485_RX LOW						// Receive control pin goes low
 
 
-#define SERIAL_COMMUNICATION_CONTROL_PIN D5	// Transmission set pin
-#define RX_PIN D6							// Serial Receive pin
-#define TX_PIN D7							// Serial Transmit pin
-
+#if defined(CONFIG_IDF_TARGET_ESP32)
+# define SERIAL_COMMUNICATION_CONTROL_PIN 5	// Transmission set pin
+#else
+# define SERIAL_COMMUNICATION_CONTROL_PIN D5	// Transmission set pin
+# define RX_PIN D6							// Serial Receive pin
+# define TX_PIN D7							// Serial Transmit pin
+#endif
 
 class RS485Handler
 {
 
 	private:
+#if defined(CONFIG_IDF_TARGET_ESP32)
+		HardwareSerial* const _RS485Serial = &Serial2;
+#else
 		SoftwareSerial* _RS485Serial;
-		char* _debugOutput;
+#endif
+		char* _debugOutput = nullptr;
+		size_t _debugOutputLength = 0;
 		void flushRS485();
 		modbusRequestAndResponseStatusValues listenResponse(modbusRequestAndResponse* resp);
 		bool checkForData();
@@ -54,7 +65,7 @@ class RS485Handler
 		modbusRequestAndResponseStatusValues sendModbus(uint8_t frame[], byte actualFrameSize, modbusRequestAndResponse* resp);
 		bool checkCRC(uint8_t frame[], byte actualFrameSize);
 		void calcCRC(uint8_t frame[], byte actualFrameSize);
-		void setDebugOutput(char* _db);
+		void setDebugOutput(char* _db, size_t len);
 };
 
 

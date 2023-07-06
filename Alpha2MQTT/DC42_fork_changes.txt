@@ -1,0 +1,14 @@
+Changes in DC42 fork of Alpha2MQTT
+==================================
+
+Changed to run on ESP32 Devkit V1 as well as the original ESP8266. When running on ESP32 it uses hardware serial port Serial2 instead of software serial.
+
+Wiring when using ESP32 Devkit:
+
+Display SDA -> GPIO22 aka D22
+Display SCL -> GPIO21 aka D21
+RS485 transmit control (if used) -> GPIO5 aka D5
+RS485 TxD -> GPIO17 aka TX2
+RS485 RxD -> GPIO16 aka RX2
+
+DC, 2023-07-06.

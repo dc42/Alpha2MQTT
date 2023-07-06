@@ -25,7 +25,9 @@ RS485Handler::RS485Handler()
 	// Set pin 'LOW' for 'Receive' mode
 	digitalWrite(SERIAL_COMMUNICATION_CONTROL_PIN, RS485_RX);
 
+#if !defined(CONFIG_IDF_TARGET_ESP32)
 	_RS485Serial = new SoftwareSerial(RX_PIN, TX_PIN);
+#endif
 	_RS485Serial->begin(INVERTER_BAUD_RATE);
 }
 
@@ -37,8 +39,10 @@ Disconnections, clean-up and what not
 RS485Handler::~RS485Handler()
 {
 	_RS485Serial->end();
+#if !defined(CONFIG_IDF_TARGET_ESP32)
 	delete _RS485Serial;
 	_RS485Serial = NULL;
+#endif
 }
 
 
@@ -48,9 +52,10 @@ setDebugOutput()
 
 Want to safely output to debug window using our fixed length RAM rather than being casual
 */
-void RS485Handler::setDebugOutput(char* _db)
+void RS485Handler::setDebugOutput(char* _db, size_t len)
 {
 	_debugOutput = _db;
+	_debugOutputLength = len;
 }
 
 
@@ -117,30 +122,31 @@ void RS485Handler::outputFrameToSerial(bool transmit, uint8_t frame[], byte actu
 	//char debugOutput[200];
 	char debugByte[5];
 
-
-	_debugOutput[0] = '\0';
 	if (transmit)
 	{
-		strncat(_debugOutput, "Tx: ", 4);
+		strcpy(_debugOutput, "Tx: ");
 	}
 	else
 	{
-		strncat(_debugOutput, "Rx: ", 4);
+		strcpy(_debugOutput, "Rx: ");
 	}
 
 	if (actualFrameSize == 0)
 	{
-		strncat(_debugOutput, "Nothing", 7);
+		strcat(_debugOutput, "Nothing");
 	}
 	else
 	{
-		for (int counter = 0; counter < actualFrameSize; counter++)
+		size_t charsPrinted = 4;
+		for (int counter = 0; counter < actualFrameSize && charsPrinted + 3 <_debugOutputLength; counter++)
 		{
 			sprintf(debugByte, "%02X", frame[counter]);
 			strncat(_debugOutput, debugByte, 2);
+			charsPrinted += 2;
 			if (counter < actualFrameSize - 1)
 			{
-				strncat(_debugOutput, " ", 1);
+				strcat(_debugOutput, " ");
+				++charsPrinted;
 			}
 		}
 	}
