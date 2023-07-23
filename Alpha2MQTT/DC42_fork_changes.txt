@@ -1,14 +1,27 @@
 Changes in DC42 fork of Alpha2MQTT
 ==================================
 
-Changed to run on ESP32 Devkit V1 as well as the original ESP8266. When running on ESP32 it uses hardware serial port Serial2 instead of software serial.
+This version differs from the original from dxoverdy as follows:
+
+- Changed to run on ESP32 Devkit V1 as well as the original ESP8266. When running on ESP32 it uses hardware serial port Serial2 instead of software serial. [dxoverdy has now added ESP32 support too.]
+- Until a RS485 connection is established (by successfully fetching the serial number), it iterates through multiple baud rates to try to get a connection. This seems to be necessary to connect to my SMILE5 inverter.
+- Removed the heartbeat code because it isn't needed (by my SMILE5 at least)
+- Cleaned up the code to remove compiler warnings and possible buffer overflows if bad data is received
 
 Wiring when using ESP32 Devkit:
 
 Display SDA -> GPIO22 aka D22
 Display SCL -> GPIO21 aka D21
-RS485 transmit control (if used) -> GPIO5 aka D5
-RS485 TxD -> GPIO17 aka TX2
-RS485 RxD -> GPIO16 aka RX2
+RS485 transmit control (if needed by the RS485 module) -> GPIO5 aka D5
+RS485 DIN (data to transmit to RS485, misleadingly called RxD on the red RS485 modules) -> GPIO17 aka TX2
+RS485 RD (data received from RS485, misleadingly called TxD on the red RS485 modules) -> GPIO16 aka RX2
 
-DC, 2023-07-06.
+For a SMILE5 inverter the RS485 connections on the RJ45 CAN/RS485 socket are as follows:
+
+Pin 3 RS485 COM (connect to COM on the RS485 module, or ground of the Alpha2MQTT if COM is not provided)
+Pin 4 RS485 B
+Pin 4 RS485 A
+
+Leave all other pins not connected (pins 2 and 6 are CAN).
+
+DC, 2023-07-23.
