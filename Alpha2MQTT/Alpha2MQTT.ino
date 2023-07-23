@@ -65,6 +65,8 @@ char _oledLine4[OLED_CHARACTER_WIDTH + 1] = "";
 RS485Handler* _modBus;
 RegisterHandler* _registerHandler;
 
+bool modbusConnected = false;
+
 // Fixed char array for messages to the serial port
 char _debugOutput[100];
 
@@ -483,11 +485,13 @@ void setup()
 	// And any messages we are subscribed to will be pushed to the mqttCallback function for processing
 	_mqtt.setCallback(mqttCallback);
 
+#if 0  //dc
 	// Get the serial number (especially prefix for error codes)
 	getSerialNumber();
 
 	// Wake up the inverter - Probably not needed but will keep in
 	heartbeat();
+#endif
 
 	// Connect to MQTT
 	mqttReconnect();
@@ -524,6 +528,19 @@ void loop()
 		mqttReconnect();
 	}
 
+#if 1 //dc wait until we have a successful modbus connection before we try to retrieve data
+	if (modbusConnected)
+	{
+		updateRunstate();
+
+		// Read and transmit all configured data to MQTT
+		sendData();
+	}
+	else
+	{
+		getSerialNumber();
+	}
+#else
 	// Send a heartbeat to keep the inverter awake
 	heartbeat();
 
@@ -532,7 +549,7 @@ void loop()
 
 	// Read and transmit all configured data to MQTT
 	sendData();
-
+#endif
 	
 	// Force Restart?
 #ifdef FORCE_RESTART
@@ -790,6 +807,7 @@ modbusRequestAndResponseStatusValues getSerialNumber()
 
 	if (result == modbusRequestAndResponseStatusValues::readDataRegisterSuccess)
 	{
+		modbusConnected = true;
 		// strncpy doesn't null terminate.
 		strncpy(oledLine3, &response.dataValueFormatted[0], 10);
 		oledLine3[10] = 0;
@@ -805,10 +823,15 @@ modbusRequestAndResponseStatusValues getSerialNumber()
 	}
 	else
 	{
+		modbusConnected = false;
 		updateOLED(false, "Alpha sys", "not known", "");
 	}
 
+#if 1 //dc debugging
+	delay(1000);
+#else
 	delay(4000);
+#endif
 
 	//Flash the LED
 	digitalWrite(LED_BUILTIN, LOW);

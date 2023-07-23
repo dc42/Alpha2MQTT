@@ -102,7 +102,16 @@ modbusRequestAndResponseStatusValues RS485Handler::sendModbus(uint8_t frame[], b
 	outputFrameToSerial(true, frame, actualFrameSize);
 #endif
 
+#if 1 //dc delay in case the inverter needs to see a steady noise-free high level before the start bit
+	delay(2);
+#endif
+
 	_RS485Serial->write(frame, actualFrameSize);
+
+#if defined(CONFIG_IDF_TARGET_ESP32)
+	// Using hardare serial, so we must wait until all the data has been transmitted before we turn off the transmitter
+	_RS485Serial->flush();
+#endif
 
 	// It's important to reset the SERIAL_COMMUNICATION_CONTROL_PIN as soon as
 	// we finish sending so that the serial port can start to buffer the response.
