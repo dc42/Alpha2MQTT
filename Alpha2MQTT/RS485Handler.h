@@ -66,6 +66,7 @@ class RS485Handler
 		bool checkCRC(uint8_t frame[], byte actualFrameSize);
 		void calcCRC(uint8_t frame[], byte actualFrameSize);
 		void setDebugOutput(char* _db, size_t len);
+		void setBaudRate(uint32_t baudRate) { _RS485Serial->updateBaudRate(baudRate); }
 };
 
 

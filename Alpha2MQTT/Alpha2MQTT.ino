@@ -485,20 +485,11 @@ void setup()
 	// And any messages we are subscribed to will be pushed to the mqttCallback function for processing
 	_mqtt.setCallback(mqttCallback);
 
-#if 0  //dc
-	// Get the serial number (especially prefix for error codes)
-	getSerialNumber();
-
-	// Wake up the inverter - Probably not needed but will keep in
-	heartbeat();
-#endif
-
 	// Connect to MQTT
 	mqttReconnect();
 
 	updateOLED(false, "", "", _version);
 }
-
 
 
 
@@ -513,6 +504,11 @@ void loop()
 	static unsigned long autoReboot = 0;
 #endif
 
+	// List of RS485 baud rates to try.
+	// My SMILE5 connects at 9600 baud; however it refuses to connect unless I attempt to connect at higher baud rates first.
+	static uint32_t baudRates[] = { 9600, 19200, 38400, 115200 };
+	static unsigned int currentBaudIndex = 0;
+
 	// Refresh LED Screen, will cause the status asterisk to flicker
 	updateOLED(true, "", "", "");
 
@@ -522,15 +518,15 @@ void loop()
 		setupWifi();
 	}
 
-	// make sure mqtt is still connected
+	// Make sure mqtt is still connected
 	if ((!_mqtt.connected()) || !_mqtt.loop())
 	{
 		mqttReconnect();
 	}
 
-#if 1 //dc wait until we have a successful modbus connection before we try to retrieve data
 	if (modbusConnected)
 	{
+		// Check and display the runstate on the display
 		updateRunstate();
 
 		// Read and transmit all configured data to MQTT
@@ -538,18 +534,14 @@ void loop()
 	}
 	else
 	{
+		++currentBaudIndex;
+		if (currentBaudIndex == sizeof(baudRates)/sizeof(baudRates[0]))
+		{
+			currentBaudIndex = 0;
+		}
+		_modBus->setBaudRate(baudRates[currentBaudIndex]);
 		getSerialNumber();
 	}
-#else
-	// Send a heartbeat to keep the inverter awake
-	heartbeat();
-
-	// Check and display the runstate on the display
-	updateRunstate();
-
-	// Read and transmit all configured data to MQTT
-	sendData();
-#endif
 	
 	// Force Restart?
 #ifdef FORCE_RESTART
@@ -559,6 +551,17 @@ void loop()
 	}
 #endif
 
+	//Flash the LED
+#if defined(CONFIG_IDF_TARGET_ESP32)
+	// LED on ESP32 Devkit is high to turn on
+	digitalWrite(LED_BUILTIN, HIGH);
+	delay(4);
+	digitalWrite(LED_BUILTIN, LOW);
+#else
+	digitalWrite(LED_BUILTIN, LOW);
+	delay(4);
+	digitalWrite(LED_BUILTIN, HIGH);
+#endif
 
 }
 
@@ -738,52 +741,6 @@ void updateOLED(bool justStatus, const char* line2, const char* line3, const cha
 	// Refresh the display
 	_display.display();
 }
-
-
-
-
-
-
-
-/*
-heartbeat
-
-Attemps to keep the inverter awake and flahes the LED on the circuit board to indicate stuff still happening
-I don't believe AlphaESS systems need any sort of heartbeat/keepalive, however, the cost is rather insignificant
-so it can stay in.
-*/
-void heartbeat()
-{
-	static unsigned long lastRun = 0;
-	modbusRequestAndResponseStatusValues result = modbusRequestAndResponseStatusValues::preProcessing;
-	modbusRequestAndResponse response;
-
-	// Send a heartbeat if the approprivate interval has passed since last time
-	if (checkTimer(&lastRun, HEARTBEAT_INTERVAL))
-	{
-		// Read any register
-		result = _registerHandler->readHandledRegister(REG_SAFETY_TEST_RW_GRID_REGULATION, &response);
-
-		if (result != modbusRequestAndResponseStatusValues::readDataRegisterSuccess)
-		{
-#ifdef DEBUG
-			sprintf(_debugOutput, "Bad heartbeat: %s", response.statusMqttMessage);
-			Serial.println(_debugOutput);
-#endif
-			updateOLED(false, "", "", "BAD-CRC-HB");
-		}
-
-		//Flash the LED
-		digitalWrite(LED_BUILTIN, LOW);
-		delay(4);
-		digitalWrite(LED_BUILTIN, HIGH);
-	}
-}
-
-
-
-
-
 
 
 
@@ -1200,7 +1157,6 @@ void mqttCallback(char* topic, byte* message, unsigned int length)
 	int iPairNameCounter;
 	int iPairValueCounter;
 	int iCleanCounter;
-	int iCounter;
 
 	// All are emptied on creation as new arrays will just tend to have garbage in which would be recognised as actual content.
 	char pairNameRaw[32] = "";
@@ -1249,7 +1205,7 @@ void mqttCallback(char* topic, byte* message, unsigned int length)
 
 
 	// Get the payload
-	for (int i = 0; i < length; i++)
+	for (unsigned int i = 0; i < length; i++)
 	{
 		mqttIncomingPayload[i] = message[i];
 	}
@@ -1320,7 +1276,7 @@ void mqttCallback(char* topic, byte* message, unsigned int length)
 	{
 		// Rudimentary JSON parser here, saves on using a library
 		// Go through character by character
-		for (iCounter = 0; iCounter < length; iCounter++)
+		for (int iCounter = 0; iCounter < (int)length; iCounter++)
 		{
 			// Find a colon
 			if (mqttIncomingPayload[iCounter] == ':')
@@ -1350,7 +1306,7 @@ void mqttCallback(char* topic, byte* message, unsigned int length)
 
 
 				// Everything to right is value until reached the end, a comma or a right brace.
-				for (iSegValueCounter = iCounter + 1; iSegValueCounter < length; iSegValueCounter++)
+				for (iSegValueCounter = iCounter + 1; iSegValueCounter < (int)length; iSegValueCounter++)
 				{
 					if (mqttIncomingPayload[iSegValueCounter] == ',' || mqttIncomingPayload[iSegValueCounter] == '}')
 					{
@@ -1359,7 +1315,7 @@ void mqttCallback(char* topic, byte* message, unsigned int length)
 					}
 				}
 				// Correct if went beyond the end
-				if (iSegValueCounter >= length)
+				if (iSegValueCounter >= (int)length)
 				{
 					// If went beyond end, correct
 					iSegValueCounter = length - 1;

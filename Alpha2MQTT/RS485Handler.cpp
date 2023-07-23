@@ -25,10 +25,12 @@ RS485Handler::RS485Handler()
 	// Set pin 'LOW' for 'Receive' mode
 	digitalWrite(SERIAL_COMMUNICATION_CONTROL_PIN, RS485_RX);
 
-#if !defined(CONFIG_IDF_TARGET_ESP32)
+#if defined(CONFIG_IDF_TARGET_ESP32)
+	_RS485Serial->begin(INVERTER_BAUD_RATE, SERIAL_8N1);
+#else
 	_RS485Serial = new SoftwareSerial(RX_PIN, TX_PIN);
+	_RS485Serial->begin(INVERTER_BAUD_RATE, SWSERIAL_8N1);
 #endif
-	_RS485Serial->begin(INVERTER_BAUD_RATE);
 }
 
 /*
