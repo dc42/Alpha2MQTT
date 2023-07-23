@@ -14,13 +14,13 @@ Display SDA -> GPIO22 aka D22
 Display SCL -> GPIO21 aka D21
 RS485 transmit control (if needed by the RS485 module) -> GPIO5 aka D5
 RS485 DIN (data to transmit to RS485, misleadingly called RxD on the red RS485 modules) -> GPIO17 aka TX2
-RS485 RD (data received from RS485, misleadingly called TxD on the red RS485 modules) -> GPIO16 aka RX2
+RS485 RD (data received from RS485, misleadingly called TxD on the red RS485 modules) -> GPIO16 aka RX2. If your RS485 module uses the MAX485 chip as mine does then that module should be powered from +5V (you can use the VIN pin on the ESP32 module, which gets power from the USB connector) and you should use a potential divider to reduce the RD output voltage of the module from 5V to a little under 3.3V before feeding it to the ESP32 RX2 pin. I use 10K between the module RD pin and the ESP32 RX2 pin, and 18K between the RX2 pin and ground.
 
 For a SMILE5 inverter the RS485 connections on the RJ45 CAN/RS485 socket are as follows:
 
 Pin 3 RS485 COM (connect to COM on the RS485 module, or ground of the Alpha2MQTT if COM is not provided)
 Pin 4 RS485 B
-Pin 4 RS485 A
+Pin 5 RS485 A
 
 Leave all other pins not connected (pins 2 and 6 are CAN).
 
