@@ -77,7 +77,7 @@ char _debugOutput[100];
 Add any number of handled registers in this list and they will be
 read and returned every 10 seconds.
 */
-static struct mqttState _mqttTenSecondStatusRegisters[] PROGMEM =
+const struct mqttState _mqttTenSecondStatusRegisters[] PROGMEM =
 {
 	{ REG_BATTERY_HOME_R_SOC, "REG_BATTERY_HOME_R_SOC" },												// State Of Charge
 	{ REG_BATTERY_HOME_R_BATTERY_POWER, "REG_BATTERY_HOME_R_BATTERY_POWER" },							// Battery Power
@@ -124,7 +124,7 @@ static struct mqttState _mqttTenSecondStatusRegisters[] PROGMEM =
 Add any number of handled registers in this list and they will be
 read and returned every minute.
 */
-static struct mqttState _mqttOneMinuteStatusRegisters[] PROGMEM =
+const struct mqttState _mqttOneMinuteStatusRegisters[] PROGMEM =
 {
 	{ REG_GRID_METER_R_VOLTAGE_OF_A_PHASE, "REG_GRID_METER_R_VOLTAGE_OF_A_PHASE" },
 	{ REG_PV_METER_R_VOLTAGE_OF_A_PHASE, "REG_PV_METER_R_VOLTAGE_OF_A_PHASE" },
@@ -135,7 +135,7 @@ static struct mqttState _mqttOneMinuteStatusRegisters[] PROGMEM =
 Add any number of handled registers in this list and they will be
 read and returned every five minutes.
 */
-static struct mqttState _mqttFiveMinuteStatusRegisters[] PROGMEM =
+const struct mqttState _mqttFiveMinuteStatusRegisters[] PROGMEM =
 {
 	{ REG_BATTERY_HOME_R_BATTERY_CHARGE_ENERGY_1, "REG_BATTERY_HOME_R_BATTERY_CHARGE_ENERGY_1" },
 	{ REG_BATTERY_HOME_R_BATTERY_DISCHARGE_ENERGY_1, "REG_BATTERY_HOME_R_BATTERY_DISCHARGE_ENERGY_1" },
@@ -146,7 +146,7 @@ static struct mqttState _mqttFiveMinuteStatusRegisters[] PROGMEM =
 Add any number of handled registers in this list and they will be
 read and returned every hour.
 */
-static struct mqttState _mqttOneHourStatusRegisters[] PROGMEM =
+const struct mqttState _mqttOneHourStatusRegisters[] PROGMEM =
 {
 	{ REG_GRID_METER_R_FREQUENCY, "REG_GRID_METER_R_FREQUENCY" },
 	{ REG_PV_METER_R_FREQUENCY, "REG_PV_METER_R_FREQUENCY" },
@@ -159,7 +159,7 @@ static struct mqttState _mqttOneHourStatusRegisters[] PROGMEM =
 Add any number of handled registers in this list and they will be
 read and returned every day.
 */
-static struct mqttState _mqttOneDayStatusRegisters[] PROGMEM =
+const struct mqttState _mqttOneDayStatusRegisters[] PROGMEM =
 {
 	{ REG_SYSTEM_OP_R_SYSTEM_TOTAL_PV_ENERGY_1, "REG_SYSTEM_OP_R_SYSTEM_TOTAL_PV_ENERGY_1" },
 	{ REG_GRID_METER_R_TOTAL_ENERGY_FEED_TO_GRID_1, "REG_GRID_METER_R_TOTAL_ENERGY_FEED_TO_GRID_1" },
@@ -173,7 +173,7 @@ static struct mqttState _mqttOneDayStatusRegisters[] PROGMEM =
 Every handled register
 */
 
-static struct mqttState _mqttAllHandledRegisters[] PROGMEM =
+const struct mqttState _mqttAllHandledRegisters[] PROGMEM =
 {
 	{ REG_GRID_METER_RW_GRID_METER_CT_ENABLE, "REG_GRID_METER_RW_GRID_METER_CT_ENABLE" },
 	{ REG_GRID_METER_RW_GRID_METER_CT_RATE, "REG_GRID_METER_RW_GRID_METER_CT_RATE" },
@@ -976,7 +976,7 @@ addStateInfo
 
 Query the handled register in the usual way, and add the cleansed output to the buffer
 */
-modbusRequestAndResponseStatusValues addStateInfo(uint16_t registerAddress, char* registerName, bool addComma, modbusRequestAndResponseStatusValues& resultAddedToPayload)
+modbusRequestAndResponseStatusValues addStateInfo(uint16_t registerAddress, const char* registerName, bool addComma, modbusRequestAndResponseStatusValues& resultAddedToPayload)
 {
 	char stateAddition[128] = ""; // 128 should cover individual additions to the payload
 	char addQuote = false;
@@ -1087,7 +1087,7 @@ void sendData()
 	}
 }
 
-void sendDataFromAppropriateArray(mqttState* registerArray, int numberOfRegisters, const char* topic)
+void sendDataFromAppropriateArray(const mqttState* registerArray, int numberOfRegisters, const char* topic)
 {
 	int	l = 0;
 

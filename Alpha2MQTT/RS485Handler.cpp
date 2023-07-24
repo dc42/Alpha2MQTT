@@ -487,7 +487,7 @@ bool RS485Handler::checkCRC(uint8_t frame[], byte actualFrameSize)
 	calcCRC(frame, actualFrameSize);
 	calculated_crc = ((frame[actualFrameSize - 2] << 8) | frame[actualFrameSize - 1]);
 
-	return (received_crc = calculated_crc);
+	return (received_crc == calculated_crc);
 }
 
 
@@ -500,7 +500,7 @@ https://github.com/angeloc/simplemodbusng/blob/master/SimpleModbusMaster/SimpleM
 */
 void RS485Handler::calcCRC(uint8_t frame[], byte actualFrameSize)
 {
-	unsigned int temp = 0xffff, flag;
+	unsigned int temp = 0xffff;
 
 	for (unsigned char i = 0; i < actualFrameSize - 2; i++)
 	{
@@ -508,7 +508,7 @@ void RS485Handler::calcCRC(uint8_t frame[], byte actualFrameSize)
 
 		for (unsigned char j = 1; j <= 8; j++)
 		{
-			flag = temp & 0x0001;
+			const unsigned int flag = temp & 0x0001;
 			temp >>= 1;
 
 			if (flag)

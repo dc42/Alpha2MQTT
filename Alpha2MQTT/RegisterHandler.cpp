@@ -1742,7 +1742,7 @@ modbusRequestAndResponseStatusValues RegisterHandler::readHandledRegister(uint16
 										{
 											// Generate a frame without CRC (ending 0, 0), sendModbus will do the rest
 											uint8_t	frame[] = { ALPHA_SLAVE_ID, MODBUS_FN_READDATAREGISTER, REG_GRID_METER_R_TOTAL_ACTIVE_POWER_1 >> 8, REG_GRID_METER_R_TOTAL_ACTIVE_POWER_1 & 0xff, 0, 2, 0, 0 };
-											// And send to the device, it's all synchronos so by the time we get a response we will know if success or failure
+											// And send to the device, it's all synchronous so by the time we get a response we will know if success or failure
 											result = _modBus->sendModbus(frame, sizeof(frame), rs);
 											gridPower = (int32_t)(rs->data[0] << 24 | rs->data[1] << 16 | rs->data[2] << 8 | rs->data[3]);
 											if (result == modbusRequestAndResponseStatusValues::readDataRegisterSuccess)
@@ -2002,7 +2002,7 @@ modbusRequestAndResponseStatusValues RegisterHandler::readHandledRegister(uint16
 			// Type: Unsigned Short
 			// 1V
 			// Presume * 0.1 as result appears to reflect this.  I.e. my voltage 2421, or 242.1
-			sprintf(rs->dataValueFormatted, "%0.02f", rs->unsignedShortValue * (LEGACY_CALCULATIONS ? 1 : 0.1));
+			sprintf(rs->dataValueFormatted, "%0.01f", rs->unsignedShortValue * (LEGACY_CALCULATIONS ? 1 : 0.1));
 			break;
 		}
 		case REG_GRID_METER_R_VOLTAGE_OF_B_PHASE:
@@ -2010,7 +2010,7 @@ modbusRequestAndResponseStatusValues RegisterHandler::readHandledRegister(uint16
 			// Type: Unsigned Short
 			// 1V
 			// Presume * 0.1 as result appears to reflect this.  I.e. my voltage 2421, or 242.1
-			sprintf(rs->dataValueFormatted, "%0.02f", rs->unsignedShortValue * (LEGACY_CALCULATIONS ? 1 : 0.1));
+			sprintf(rs->dataValueFormatted, "%0.01f", rs->unsignedShortValue * (LEGACY_CALCULATIONS ? 1 : 0.1));
 			break;
 		}
 		case REG_GRID_METER_R_VOLTAGE_OF_C_PHASE:
@@ -2047,9 +2047,14 @@ modbusRequestAndResponseStatusValues RegisterHandler::readHandledRegister(uint16
 		}
 		case REG_GRID_METER_R_FREQUENCY:
 		{
+#if 1 // dc - my SMILE5 returns only 1 decimal place
+			// 0.1Hz
+			sprintf(rs->dataValueFormatted, "%0.01f", rs->unsignedShortValue * 0.1);
+#else
 			// Type: Unsigned Short
 			// 0.01Hz
 			sprintf(rs->dataValueFormatted, "%0.02f", rs->unsignedShortValue * 0.01);
+#endif
 			break;
 		}
 		case REG_GRID_METER_R_ACTIVE_POWER_OF_A_PHASE_1:
@@ -2277,8 +2282,13 @@ modbusRequestAndResponseStatusValues RegisterHandler::readHandledRegister(uint16
 		case REG_PV_METER_R_FREQUENCY:
 		{
 			// Type: Unsigned Short
+#if 1 // dc - my SMILE5 returns only 1 decimal place
+			// 0.1Hz
+			sprintf(rs->dataValueFormatted, "%0.01f", rs->unsignedShortValue * 0.1);
+#else
 			// 0.01Hz
 			sprintf(rs->dataValueFormatted, "%0.02f", rs->unsignedShortValue * 0.01);
+#endif
 			break;
 		}
 		case REG_PV_METER_R_ACTIVE_POWER_OF_A_PHASE_1:
