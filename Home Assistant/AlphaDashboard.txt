@@ -55,9 +55,9 @@ views:
             card_mod:
               style: |
                 ha-card {
-                color:      {% if states('sensor.alpha_grid_power')|int < 0 %}
+                color:      {% if states('sensor.alpha_grid_power')|int > 0 %}
                                   red
-                            {% elif states('sensor.alpha_grid_power')|int > 0 %}
+                            {% elif states('sensor.alpha_grid_power')|int < 0 %}
                                  green
                                 {% else %}
                                   black
