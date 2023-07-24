@@ -28,14 +28,14 @@ First, go and customise options at the top of Definitions.h!
 #include <Adafruit_SSD1306.h>
 
 // Device parameters
-const char _version[6] = "v1.20";
+const char _version[6] = "v1.23";
 
 #define ARRAY_SIZE(_x)    (sizeof(_x)/sizeof(_x[0]))
 
 #pragma GCC diagnostic ignored "-Wformat-truncation"
 
 #if defined(CONFIG_IDF_TARGET_ESP32) && !defined(LED_BUILTIN)
-# define LED_BUILTIN    2
+# define LED_BUILTIN    2       // LED pin on ESP32 Devkit
 #endif
 
 // WiFi parameters
@@ -385,7 +385,6 @@ static struct mqttState _mqttAllHandledRegisters[] PROGMEM =
 
 
 // These timers are used in the main loop.
-#define HEARTBEAT_INTERVAL 9000
 #define RUNSTATE_INTERVAL 5000
 #define STATUS_INTERVAL_TEN_SECONDS 10000
 #define STATUS_INTERVAL_ONE_MINUTE 60000
@@ -394,10 +393,10 @@ static struct mqttState _mqttAllHandledRegisters[] PROGMEM =
 #define STATUS_INTERVAL_ONE_DAY 86400000
 #define UPDATE_STATUS_BAR_INTERVAL 500
 
-// Wemos OLED Shield set up. 64x48, pins D1 and D2
-#define OLED_RESET 0  // GPIO0
-Adafruit_SSD1306 _display(OLED_RESET);
-
+// Wemos OLED Shield set up. 64x48
+// Pins D1 D2 if ESP8266
+// Pins GPIO22 and GPIO21 (SCL/SDA) with optional reset on GPIO13 if ESP32
+Adafruit_SSD1306 _display(-1); // No RESET Pin
 
 
 
@@ -420,11 +419,7 @@ void setup()
 	// Configure LED for output
 	pinMode(LED_BUILTIN, OUTPUT);
 
-#ifdef DEBUG
-  Serial.println("Starting up");
-#endif
-
-	// Set up the software serial for communicating with the MAX
+	// Set up the serial interface for communicating with the MAX
 	_modBus = new RS485Handler;
 	_modBus->setDebugOutput(_debugOutput, ARRAY_SIZE(_debugOutput));
 	
@@ -549,18 +544,6 @@ void loop()
 	{
 		ESP.restart();
 	}
-#endif
-
-	//Flash the LED
-#if defined(CONFIG_IDF_TARGET_ESP32)
-	// LED on ESP32 Devkit is high to turn on
-	digitalWrite(LED_BUILTIN, HIGH);
-	delay(4);
-	digitalWrite(LED_BUILTIN, LOW);
-#else
-	digitalWrite(LED_BUILTIN, LOW);
-	delay(4);
-	digitalWrite(LED_BUILTIN, HIGH);
 #endif
 
 }
@@ -791,9 +774,16 @@ modbusRequestAndResponseStatusValues getSerialNumber()
 #endif
 
 	//Flash the LED
+#if defined(CONFIG_IDF_TARGET_ESP32)
+	// LED on ESP32 Devkit is high to turn on
+	digitalWrite(LED_BUILTIN, HIGH);
+	delay(4);
+	digitalWrite(LED_BUILTIN, LOW);
+#else
 	digitalWrite(LED_BUILTIN, LOW);
 	delay(4);
 	digitalWrite(LED_BUILTIN, HIGH);
+#endif
 
 	return result;
 }
@@ -820,6 +810,18 @@ void updateRunstate()
 
 	if (checkTimer(&lastRun, RUNSTATE_INTERVAL))
 	{
+		//Flash the LED
+#if defined(CONFIG_IDF_TARGET_ESP32)
+		// LED on ESP32 Devkit is high to turn on
+		digitalWrite(LED_BUILTIN, HIGH);
+		delay(4);
+		digitalWrite(LED_BUILTIN, LOW);
+#else
+		digitalWrite(LED_BUILTIN, LOW);
+		delay(4);
+		digitalWrite(LED_BUILTIN, HIGH);
+#endif
+
 		// Get Dispatch Start - Is Alpha2MQTT controlling the inverter?
 		request = _registerHandler->readHandledRegister(REG_DISPATCH_RW_DISPATCH_START, &response);
 		if (request == modbusRequestAndResponseStatusValues::readDataRegisterSuccess)
@@ -890,7 +892,7 @@ void updateRunstate()
 #ifdef DEBUG
 			Serial.println(response.statusMqttMessage);
 #endif
-			updateOLED(false, "", "", "BAD-CRC-UR");
+			updateOLED(false, "", "", response.displayMessage);
 		}
 	}
 }
@@ -1268,7 +1270,7 @@ void mqttCallback(char* topic, byte* message, unsigned int length)
 		{
 			// We won't be doing anything if no payload
 			result = modbusRequestAndResponseStatusValues::noMQTTPayload;
-			strcpy(response.statusMqttMessage, MODBUS_REQUEST_AND_RESPONSE_NO_MQTT_PAYLOAD_MQTT_DESC);
+			response.statusMqttMessage = MODBUS_REQUEST_AND_RESPONSE_NO_MQTT_PAYLOAD_MQTT_DESC;
 		}
 	}
 
@@ -1452,7 +1454,7 @@ void mqttCallback(char* topic, byte* message, unsigned int length)
 				Serial.println(_debugOutput);
 #endif
 				result = modbusRequestAndResponseStatusValues::invalidMQTTPayload;
-				strcpy(response.statusMqttMessage, MODBUS_REQUEST_AND_RESPONSE_INVALID_MQTT_PAYLOAD_MQTT_DESC);
+				response.statusMqttMessage = MODBUS_REQUEST_AND_RESPONSE_INVALID_MQTT_PAYLOAD_MQTT_DESC;
 			}
 			else
 			{
@@ -1480,7 +1482,7 @@ void mqttCallback(char* topic, byte* message, unsigned int length)
 				Serial.println(_debugOutput);
 #endif
 				result = modbusRequestAndResponseStatusValues::invalidMQTTPayload;
-				strcpy(response.statusMqttMessage, MODBUS_REQUEST_AND_RESPONSE_INVALID_MQTT_PAYLOAD_MQTT_DESC);
+				response.statusMqttMessage = MODBUS_REQUEST_AND_RESPONSE_INVALID_MQTT_PAYLOAD_MQTT_DESC;
 			}
 			else
 			{
@@ -1513,7 +1515,7 @@ void mqttCallback(char* topic, byte* message, unsigned int length)
 				Serial.println(_debugOutput);
 #endif
 				result = modbusRequestAndResponseStatusValues::invalidMQTTPayload;
-				strcpy(response.statusMqttMessage, MODBUS_REQUEST_AND_RESPONSE_INVALID_MQTT_PAYLOAD_MQTT_DESC);
+				response.statusMqttMessage = MODBUS_REQUEST_AND_RESPONSE_INVALID_MQTT_PAYLOAD_MQTT_DESC;
 			}
 			else
 			{
@@ -1542,7 +1544,7 @@ void mqttCallback(char* topic, byte* message, unsigned int length)
 				Serial.println(_debugOutput);
 #endif
 				result = modbusRequestAndResponseStatusValues::invalidMQTTPayload;
-				strcpy(response.statusMqttMessage, MODBUS_REQUEST_AND_RESPONSE_INVALID_MQTT_PAYLOAD_MQTT_DESC);
+				response.statusMqttMessage = MODBUS_REQUEST_AND_RESPONSE_INVALID_MQTT_PAYLOAD_MQTT_DESC;
 			}
 			else
 			{
@@ -1573,7 +1575,7 @@ void mqttCallback(char* topic, byte* message, unsigned int length)
 				Serial.println(_debugOutput);
 #endif
 				result = modbusRequestAndResponseStatusValues::invalidMQTTPayload;
-				strcpy(response.statusMqttMessage, MODBUS_REQUEST_AND_RESPONSE_INVALID_MQTT_PAYLOAD_MQTT_DESC);
+				response.statusMqttMessage = MODBUS_REQUEST_AND_RESPONSE_INVALID_MQTT_PAYLOAD_MQTT_DESC;
 			}
 			else
 			{
@@ -1644,7 +1646,7 @@ void mqttCallback(char* topic, byte* message, unsigned int length)
 				Serial.println(_debugOutput);
 #endif
 				result = modbusRequestAndResponseStatusValues::invalidMQTTPayload;
-				strcpy(response.statusMqttMessage, MODBUS_REQUEST_AND_RESPONSE_INVALID_MQTT_PAYLOAD_MQTT_DESC);
+				response.statusMqttMessage = MODBUS_REQUEST_AND_RESPONSE_INVALID_MQTT_PAYLOAD_MQTT_DESC;
 			}
 			else
 			{
