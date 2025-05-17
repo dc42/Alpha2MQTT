@@ -1025,11 +1025,15 @@ modbusRequestAndResponseStatusValues addStateInfo(uint16_t registerAddress, char
 
 		// Let the onward process also know if the buffer failed.
 		resultAddedToPayload = addToPayload(stateAddition);
+#if 0	// Enable this debug to see when registers are read and added successfully
+		sprintf(_debugOutput, "addStateInfo succeeded for: 0x%04x, registerAddress);
+		Serial.println(_debugOutput);
+#endif
 	}
 	else
 	{
 #ifdef DEBUG
-		sprintf(_debugOutput, "Failed to addStateInfo for: %u, Result was: %d", registerAddress, result);
+		sprintf(_debugOutput, "Failed to addStateInfo for: 0x%04x, result was: %d", registerAddress, result);
 		Serial.println(_debugOutput);
 #endif
 	}
