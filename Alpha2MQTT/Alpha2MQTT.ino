@@ -406,7 +406,6 @@ void setup()
 	modbusRequestAndResponse response;
 	char baudRateString[10] = "";
 	int baudRateIterator = -1;
-	bool firstCheck = true;
 
 
 
@@ -500,11 +499,11 @@ void setup()
 		}
 
 		// Update the display
-		sprintf(baudRateString, "%u", knownBaudRates[baudRateIterator]);
+		sprintf(baudRateString, "%lu", knownBaudRates[baudRateIterator]);
 
 		updateOLED(false, "Test Baud", baudRateString, "");
 #ifdef DEBUG
-		sprintf(_debugOutput, "About To Try: %u", knownBaudRates[baudRateIterator]);
+		sprintf(_debugOutput, "About To Try: %lu", knownBaudRates[baudRateIterator]);
 		Serial.println(_debugOutput);
 #endif
 		// Set the rate
@@ -549,7 +548,9 @@ The loop function runs overand over again until power down or reset
 */
 void loop()
 {
+#ifdef FORCE_RESTART
 	static unsigned long autoReboot = 0;
+#endif
 
 	// Refresh LED Screen, will cause the status asterisk to flicker
 	updateOLED(true, "", "", "");
@@ -776,7 +777,6 @@ some system fault descriptions depend on knowing whether an AL based or AE based
 */
 modbusRequestAndResponseStatusValues getSerialNumber()
 {
-	static unsigned long lastRun = 0;
 	modbusRequestAndResponseStatusValues result = modbusRequestAndResponseStatusValues::preProcessing;
 	modbusRequestAndResponse response;
 
@@ -1001,7 +1001,6 @@ Query the handled register in the usual way, and add the cleansed output to the 
 */
 modbusRequestAndResponseStatusValues addStateInfo(uint16_t registerAddress, char* registerName, bool addComma, modbusRequestAndResponseStatusValues& resultAddedToPayload)
 {
-	unsigned int val;
 	char stateAddition[128] = ""; // 128 should cover individual additions to the payload
 	char addQuote = false;
 	modbusRequestAndResponse response;
@@ -1043,7 +1042,7 @@ modbusRequestAndResponseStatusValues addStateInfo(uint16_t registerAddress, char
 
 
 
-modbusRequestAndResponseStatusValues addToPayload(char* addition)
+modbusRequestAndResponseStatusValues addToPayload(const char* addition)
 {
 	int targetRequestedSize = strlen(_mqttPayload) + strlen(addition);
 
@@ -1057,8 +1056,8 @@ modbusRequestAndResponseStatusValues addToPayload(char* addition)
 	}
 	else
 	{
-		// Add to the payload by sprintf back on itself with the addition
-		sprintf(_mqttPayload, "%s%s", _mqttPayload, addition);
+		// Add to the payload
+		strcat(_mqttPayload, addition);
 
 		return modbusRequestAndResponseStatusValues::addedToPayload;
 	}
@@ -1115,7 +1114,7 @@ void sendData()
 	}
 }
 
-void sendDataFromAppropriateArray(mqttState* registerArray, int numberOfRegisters, char* topic)
+void sendDataFromAppropriateArray(mqttState* registerArray, int numberOfRegisters, const char* topic)
 {
 	int	l = 0;
 
@@ -1168,7 +1167,7 @@ mqttCallback()
 
 // This function is executed when an MQTT message arrives on a topic that we are subscribed to.
 */
-void mqttCallback(char* topic, byte* message, unsigned int length)
+void mqttCallback(const char* topic, byte* message, unsigned int length)
 {
 	modbusRequestAndResponseStatusValues result = modbusRequestAndResponseStatusValues::preProcessing;
 	modbusRequestAndResponse response;
@@ -1249,7 +1248,7 @@ void mqttCallback(char* topic, byte* message, unsigned int length)
 	if (strcmp(topic, DEVICE_NAME MQTT_SUB_REQUEST_READ_HANDLED_REGISTER) == 0)
 	{
 		subScription = mqttSubscriptions::readHandledRegister;
-		strcpy(topicResponse, DEVICE_NAME MQTT_MES_RESPONSE_READ_HANDLED_REGISTER) == 0;
+		strcpy(topicResponse, DEVICE_NAME MQTT_MES_RESPONSE_READ_HANDLED_REGISTER);
 	}
 	else if (strcmp(topic, DEVICE_NAME MQTT_SUB_REQUEST_READ_RAW_REGISTER) == 0)
 	{
@@ -1288,7 +1287,7 @@ void mqttCallback(char* topic, byte* message, unsigned int length)
 	}
 	else
 	{
-		mqttSubscriptions::unknown;
+		subScription = mqttSubscriptions::unknown;
 		result = modbusRequestAndResponseStatusValues::notValidIncomingTopic;
 	}
 
@@ -1912,7 +1911,7 @@ sendMqtt
 
 Sends whatever is in the modular level payload to the specified topic.
 */
-void sendMqtt(char *topic)
+void sendMqtt(const char *topic)
 {
 	// Attempt a send
 	if (!_mqtt.publish(topic, _mqttPayload))
