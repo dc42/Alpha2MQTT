@@ -32,6 +32,16 @@ Customise these options as per README.txt.  Please read README.txt before contin
 #error You must only select one microprocessor from the list
 #endif
 
+// If the board definition for your ESP32 board doesn't define LED_BUILTIN, define it here
+// For example, some ESP32 modules work when configured as "ESP32 Dev Module" but that board file doesn't define LED_BUILTIN for that board
+#if defined(CONFIG_IDF_TARGET_ESP32) && !defined(LED_BUILTIN)
+# define LED_BUILTIN    2       // LED pin on ESP32 Devkit
+#endif
+
+// Define the width and height of the display in pixels.
+// The WeMos OLED shield used in the original project is 64x48 but most SSD1306 displays sold on Amazon are 128x64
+#define LED_WIDTH_PIXELS		64		// 128
+#define LED_HEIGHT_PIXELS		48		// 64
 
 // If values for some registers such as voltage or temperatures appear to be out by a decimal place or two, try the following:
 // Documentation declares 1V - However Presume 0.1 as result appears to reflect this.  I.e. my voltage reading was 2421, * 0.1 for 242.1

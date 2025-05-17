@@ -386,7 +386,7 @@ static struct mqttState _mqttAllHandledRegisters[] PROGMEM =
 // Wemos OLED Shield set up. 64x48
 // Pins D1 D2 if ESP8266
 // Pins GPIO22 and GPIO21 (SCL/SDA) with optional reset on GPIO13 if ESP32
-Adafruit_SSD1306 _display(-1); // No RESET Pin
+Adafruit_SSD1306 _display(LED_WIDTH_PIXELS, LED_HEIGHT_PIXELS);	// No RESET Pin
 
 
 
