@@ -27,6 +27,17 @@ First, go and customise options at the top of Definitions.h!
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
+#ifdef LED_FONT
+// We have to #include the font file after we #include the Adafruit_GFX file otherwise it isn't found
+// So we can't #include it in Definitions.h. Use this rather clumsy mechanism instead.
+# define P_EXPAND(x) x
+# define P_CONCAT(x,y) P_EXPAND(x)y
+# define P_STR(x) #x
+# define P_XSTR(x) P_STR(x)
+# define P_INCLUDE_FILE P_XSTR(P_CONCAT(Fonts/,P_CONCAT(LED_FONT,.h)))
+# include P_INCLUDE_FILE
+#endif
+
 // Device parameters
 char _version[6] = "v1.27";
 
@@ -422,6 +433,9 @@ void setup()
 
 	// Display time
 	_display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // initialize OLED with the I2C addr 0x3C (for the 64x48)
+#ifdef LED_FONT
+	_display.setFont(&LED_FONT);
+#endif
 	_display.clearDisplay();
 	_display.display();
 	updateOLED(false, "", "", _version);
@@ -668,7 +682,9 @@ void updateOLED(bool justStatus, const char* line2, const char* line3, const cha
 	_display.clearDisplay();
 	_display.setTextSize(1);
 	_display.setTextColor(WHITE);
-	_display.setCursor(0, 0);
+
+	unsigned int vpos = LED_LINE0_VPOS;
+	_display.setCursor(0, vpos);
 
 	char line1Contents[OLED_CHARACTER_WIDTH];
 	char line2Contents[OLED_CHARACTER_WIDTH];
@@ -719,12 +735,10 @@ void updateOLED(bool justStatus, const char* line2, const char* line3, const cha
 	sprintf(line1Contents, "%s%c%c%c", "A2M    ", _oledOperatingIndicator, (WiFi.status() == WL_CONNECTED ? 'W' : ' '), (_mqtt.connected() && _mqtt.loop() ? 'M' : ' ') );
 	_display.println(line1Contents);
 
-
-
-
 	// Next line
 
-	_display.setCursor(0, 12);
+	vpos += LED_LINE_HEIGHT;
+	_display.setCursor(0, vpos);
 	if (!justStatus)
 	{
 		_display.println(line2Contents);
@@ -735,9 +749,8 @@ void updateOLED(bool justStatus, const char* line2, const char* line3, const cha
 		_display.println(_oledLine2);
 	}
 
-
-
-	_display.setCursor(0, 24);
+	vpos += LED_LINE_HEIGHT;
+	_display.setCursor(0, vpos);
 	if (!justStatus)
 	{
 		_display.println(line3Contents);
@@ -748,7 +761,8 @@ void updateOLED(bool justStatus, const char* line2, const char* line3, const cha
 		_display.println(_oledLine3);
 	}
 
-	_display.setCursor(0, 36);
+	vpos += LED_LINE_HEIGHT;
+	_display.setCursor(0, vpos);
 	if (!justStatus)
 	{
 		_display.println(line4Contents);
@@ -892,7 +906,7 @@ void updateRunstate()
 			request = _registerHandler->readHandledRegister(REG_BATTERY_HOME_R_BATTERY_POWER, &response);
 			if (request == modbusRequestAndResponseStatusValues::readDataRegisterSuccess)
 			{
-				sprintf(batteryPower, "Bat:%dW", response.signedShortValue);
+				sprintf(batteryPower, "Bat %5dW", response.signedShortValue);
 			}
 		}
 
@@ -902,7 +916,7 @@ void updateRunstate()
 			request = _registerHandler->readHandledRegister(REG_BATTERY_HOME_R_SOC, &response);
 			if (request == modbusRequestAndResponseStatusValues::readDataRegisterSuccess)
 			{
-				sprintf(batterySOC, "%0.02f%%", response.unsignedShortValue * 0.1);
+				sprintf(batterySOC, "%0.01f%%", response.unsignedShortValue * 0.1);
 			}
 		}
 
